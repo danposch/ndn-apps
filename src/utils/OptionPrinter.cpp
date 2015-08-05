@@ -170,7 +170,7 @@ namespace rad
   {
     std::string currOptionName = error.get_option_name();
     boost::algorithm::erase_regex(currOptionName, boost::regex("^-+"));
-    error.set_option_name(currOptionName);
+    //error.set_option_name(currOptionName);
 
   }
 
