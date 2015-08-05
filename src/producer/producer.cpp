@@ -30,6 +30,11 @@ public:
     m_face.processEvents();
   }
 
+  void setDebug(bool debug)
+  {
+    this->debug = debug;
+  }
+
 private:
 
   std::string generateContent(const int length)
@@ -48,7 +53,8 @@ private:
 
   void onInterest(const InterestFilter& filter, const Interest& interest)
   {
-    std::cout << "<< I: " << interest << std::endl;
+    if(debug)
+      std::cout << "Received Interest: " << interest << std::endl;
 
     // Create new name, based on Interest's name
     Name dataName(interest.getName());
@@ -71,9 +77,10 @@ private:
 
   void onRegisterFailed(const Name& prefix, const std::string& reason)
   {
-    std::cerr << "ERROR: Failed to register prefix \""
-              << prefix << "\" in local hub's daemon (" << reason << ")"
-              << std::endl;
+    if(debug)
+      std::cerr << "ERROR: Failed to register prefix \""
+                << prefix << "\" in local hub's daemon (" << reason << ")"
+                << std::endl;
     m_face.shutdown();
   }
 
@@ -83,6 +90,7 @@ private:
   int data_size;
   int fresshness_seconds;
   std::string prefix;
+  bool debug;
 };
 
 } // namespace ndn
@@ -97,7 +105,7 @@ int main(int argc, char** argv)
       ("prefix,p", value<std::string>()->required (), "Prefix the Producer listens too.")
       ("data-size,s", value<int>()->required (), "The size of the datapacket in bytes.")
       ("freshness-time,f", value<int>()->required (), "Freshness time of the content in seconds. (Default 5min)")
-      ;
+      ("debug,v", "Enables Debug.");
 
   positional_options_description positionalOptions;
   variables_map vm;
@@ -148,6 +156,12 @@ int main(int argc, char** argv)
   ndn::Producer producer(vm["prefix"].as<std::string>(),
                          vm["data-size"].as<int>(),
                          vm["freshness-time"].as<int>());
+
+  if(vm.count ("debug"))
+    producer.setDebug (true);
+  else
+    producer.setDebug (false);
+
   try
   {
     producer.run();

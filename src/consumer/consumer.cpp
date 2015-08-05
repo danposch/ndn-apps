@@ -22,6 +22,10 @@ public:
     this->counter = 0;
     this->run_time = run_time;
     this->stop_consumer = false;
+
+    this->interest_received = 0;
+    this->interest_send = 0;
+    this->debug = false;
   }
 
   void run()
@@ -33,6 +37,17 @@ public:
     stopTimer.async_wait(bind(&Consumer::stopConsumer, this));
 
     m_face.processEvents();
+
+    double ratio = ((double) interest_received) / (double) interest_send;
+
+    std::cout << "Interests Send: " << interest_send << std::endl;
+    std::cout << "Interests Received: " << interest_received << std::endl;
+    std::cout << "Interst/Data ratio " << ratio << std::endl;
+  }
+
+  void setDebug(bool debug)
+  {
+    this->debug = debug;
   }
 
 private:
@@ -47,7 +62,10 @@ private:
                            bind(&Consumer::onData, this,  _1, _2),
                            bind(&Consumer::onTimeout, this, _1));
 
-    std::cout << "Sending " << interest << std::endl;
+    this->interest_send++;
+
+    if(debug)
+      std::cout << "Sending: " << interest << std::endl;
 
     if(!stop_consumer)
     {
@@ -58,12 +76,15 @@ private:
 
   void onData(const Interest& interest, const Data& data)
   {
-    std::cout << data << std::endl;
+    if(debug)
+      std::cout << "Received: " << data << std::endl;
+    this->interest_received++;
   }
 
   void onTimeout(const Interest& interest)
   {
-    std::cout << "Timeout " << interest << std::endl;
+    if(debug)
+      std::cout << "Timeout " << interest << std::endl;
   }
 
   void stopConsumer()
@@ -80,6 +101,10 @@ private:
   int counter;
   int run_time;
   bool stop_consumer;
+  bool debug;
+
+  unsigned int interest_send;
+  unsigned int interest_received;
 };
 
 }
@@ -95,7 +120,8 @@ main(int argc, char** argv)
       ("help,h", "Prints help.")
       ("prefix,p", value<std::string>()->required (), "Prefix the Consumer uses to request content.")
       ("rate,r", value<int>()->required (), "Interests per second issued.")
-      ("run-time,t", value<int>()->required (), "Runtime of Producer in Seconds.");
+      ("run-time,t", value<int>()->required (), "Runtime of Producer in Seconds.")
+      ("debug,v", "Enables Debug.");
 
   positional_options_description positionalOptions;
   variables_map vm;
@@ -146,6 +172,11 @@ main(int argc, char** argv)
   ndn::Consumer consumer(vm["prefix"].as<std::string>(),
                          vm["rate"].as<int>(),
                          vm["run-time"].as<int>());
+
+  if(vm.count("debug"))
+    consumer.setDebug (true);
+  else
+    consumer.setDebug (false);
 
   try
   {
