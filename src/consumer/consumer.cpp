@@ -118,10 +118,10 @@ main(int argc, char** argv)
   options_description desc("Programm Options");
   desc.add_options ()
       ("help,h", "Prints help.")
-      ("prefix,p", value<std::string>()->required (), "Prefix the Consumer uses to request content.")
-      ("rate,r", value<int>()->required (), "Interests per second issued.")
-      ("run-time,t", value<int>()->required (), "Runtime of Producer in Seconds.")
-      ("debug,v", "Enables Debug.");
+      ("prefix,p", value<std::string>()->required (), "Prefix the Consumer uses to request content. (Required)")
+      ("rate,r", value<int>()->required (), "Interests per second issued. (Required)")
+      ("run-time,t", value<int>()->required (), "Runtime of Producer in Seconds. (Required)")
+      ("debug,v", "Enables Debug. (Optional)");
 
   positional_options_description positionalOptions;
   variables_map vm;

@@ -102,9 +102,9 @@ int main(int argc, char** argv)
   options_description desc("Programm Options");
   desc.add_options ()
       ("help,h", "Prints help.")
-      ("prefix,p", value<std::string>()->required (), "Prefix the Producer listens too.")
-      ("data-size,s", value<int>()->required (), "The size of the datapacket in bytes.")
-      ("freshness-time,f", value<int>()->required (), "Freshness time of the content in seconds. (Default 5min)")
+      ("prefix,p", value<std::string>()->required (), "Prefix the Producer listens too. (Required)")
+      ("data-size,s", value<int>()->required (), "The size of the datapacket in bytes. (Required)")
+      ("freshness-time,f", value<int>(), "Freshness time of the content in seconds. (Default 5min)")
       ("debug,v", "Enables Debug.");
 
   positional_options_description positionalOptions;
@@ -153,9 +153,15 @@ int main(int argc, char** argv)
     return -1;
   }
 
+  int freshness_time = 300;
+  if(vm.count ("freshness-time"))
+  {
+    freshness_time = vm["freshness-time"].as<int>();
+  }
+
   ndn::Producer producer(vm["prefix"].as<std::string>(),
                          vm["data-size"].as<int>(),
-                         vm["freshness-time"].as<int>());
+                         freshness_time);
 
   if(vm.count ("debug"))
     producer.setDebug (true);
