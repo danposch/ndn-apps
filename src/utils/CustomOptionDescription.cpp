@@ -37,7 +37,7 @@ namespace rad
     hasArgument_(false),
     isPositional_(false)
   {
-    if ( (option->canonical_display_name(SHORT_PREPENDED_IF_EXIST_ELSE_LONG).size() == SHORT_OPTION_STRING_LENGTH ) )
+    /*if ( (option->canonical_display_name(SHORT_PREPENDED_IF_EXIST_ELSE_LONG).size() == SHORT_OPTION_STRING_LENGTH ) )
     {
       hasShort_ = true;
       optionID_ = option->canonical_display_name(SHORT_PREPENDED_IF_EXIST_ELSE_LONG);
@@ -48,7 +48,11 @@ namespace rad
       hasShort_ = false;
       optionID_ = option->canonical_display_name(LONG_NON_PREPENDED_IF_EXIST_ELSE_PREPENDED_SHORT);
       optionDisplayName_ = option->canonical_display_name(LONG_PREPENDED_IF_EXIST_ELSE_PREPENDED_SHORT);
-    }
+    }*/
+
+    hasShort_ = false;
+    optionID_ = option->long_name();
+    optionDisplayName_ = option->long_name();
 
     boost::shared_ptr<const boost::program_options::value_semantic> semantic = option->semantic();
     required_ = semantic->is_required();
