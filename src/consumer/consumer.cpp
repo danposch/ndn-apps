@@ -25,7 +25,9 @@ public:
 
     this->interest_received = 0;
     this->interest_send = 0;
+    this-> rtx_counter = 0;
     this->debug = false;
+    this->rtx = false;
   }
 
   void run()
@@ -41,13 +43,22 @@ public:
     double ratio = ((double) interest_received) / (double) interest_send;
 
     std::cout << "Interests Send: " << interest_send << std::endl;
-    std::cout << "Interests Received: " << interest_received << std::endl;
-    std::cout << "Interst/Data ratio " << ratio << std::endl;
+    std::cout << "Interests Satisfied: " << interest_received << std::endl;
+    if(rtx)
+      std::cout << "Retransmissions: " << rtx_counter << std::endl;
+    else
+      std::cout << "Retransmissions: Disabled" << std::endl;
+    std::cout << "Interset/Data ratio: " << ratio << std::endl;
   }
 
   void setDebug(bool debug)
   {
     this->debug = debug;
+  }
+
+  void setRtx(bool rtx)
+  {
+    this->rtx = rtx;
   }
 
 private:
@@ -84,7 +95,28 @@ private:
   void onTimeout(const Interest& interest)
   {
     if(debug)
+    {
       std::cout << "Timeout " << interest << std::endl;
+    }
+
+    if(rtx && !stop_consumer)
+      onRetransmission(interest);
+  }
+
+  void onRetransmission(const Interest& interest)
+  {
+    Interest rtx_interest(interest.getName ());
+    rtx_interest.setInterestLifetime (interest.getInterestLifetime ());
+    //a new nonce should be generated automatically
+
+    m_face.expressInterest(rtx_interest,
+                           bind(&Consumer::onData, this,  _1, _2),
+                           bind(&Consumer::onTimeout, this, _1));
+
+    if(debug)
+      std::cout << "Rtx: " << rtx_interest << std::endl;
+
+    rtx_counter++;
   }
 
   void stopConsumer()
@@ -102,9 +134,11 @@ private:
   int run_time;
   bool stop_consumer;
   bool debug;
+  bool rtx;
 
   unsigned int interest_send;
   unsigned int interest_received;
+  unsigned int rtx_counter;
 };
 
 }
@@ -121,6 +155,7 @@ main(int argc, char** argv)
       ("prefix,p", value<std::string>()->required (), "Prefix the Consumer uses to request content. (Required)")
       ("rate,r", value<int>()->required (), "Interests per second issued. (Required)")
       ("run-time,t", value<int>()->required (), "Runtime of Producer in Seconds. (Required)")
+      ("rtx,x", "Enable Retransmissions. (Optional)")
       ("debug,v", "Enables Debug. (Optional)");
 
   positional_options_description positionalOptions;
@@ -177,6 +212,11 @@ main(int argc, char** argv)
     consumer.setDebug (true);
   else
     consumer.setDebug (false);
+
+  if(vm.count("rtx"))
+    consumer.setRtx(true);
+  else
+    consumer.setRtx(false);
 
   try
   {
