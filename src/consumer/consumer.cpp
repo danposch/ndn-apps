@@ -6,7 +6,11 @@
 #include "../utils/OptionPrinter.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/asio/deadline_timer.hpp"
+
 #include <vector>
+#include <cstdio>
+#include <iostream>
+#include <fstream>
 
 using namespace boost::program_options;
 
@@ -170,7 +174,8 @@ main(int argc, char** argv)
       ("run-time,t", value<int>()->required (), "Runtime of Producer in Seconds. (Required)")
       ("rtx,x", "Enable Retransmissions. (Optional)")
       ("lifetime,l", value<int>(), "Interest Lifetime (Default 1000msec)")
-      ("debug,v", "Enables Debug. (Optional)");
+      ("debug,v", "Enables Debug. (Optional)")
+      ("logfile,o", value<std::string>(), "Writes Output to LogFile. (Optional)");
 
   positional_options_description positionalOptions;
   variables_map vm;
@@ -218,6 +223,16 @@ main(int argc, char** argv)
     return -1;
   }
 
+  std::streambuf *backup = NULL;
+  std::ofstream output;
+  if(vm.count ("logfile"))
+  {
+    std::string fname = vm["logfile"].as<std::string>();
+    output.open (fname.c_str ());
+    backup = std::cout.rdbuf();
+    std::cout.rdbuf(output.rdbuf());
+  }
+
   int lifetime = 1000;
   if(vm.count ("lifetime"))
   {
@@ -247,5 +262,12 @@ main(int argc, char** argv)
   {
     std::cerr << "ERROR: " << e.what() << std::endl;
   }
+
+  if(vm.count ("logfile"))
+  {
+    std::cout.rdbuf(backup);
+    output.close ();
+  }
+
   return 0;
 }
