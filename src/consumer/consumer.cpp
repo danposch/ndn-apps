@@ -6,6 +6,7 @@
 #include "../utils/OptionPrinter.hpp"
 #include "boost/lexical_cast.hpp"
 #include "boost/asio/deadline_timer.hpp"
+#include <vector>
 
 using namespace boost::program_options;
 
@@ -15,15 +16,16 @@ class Consumer : noncopyable
 {
 public:
 
-  Consumer(std::string prefix, int rate, int run_time) : m_face(m_ioService), m_scheduler(m_ioService)
+  Consumer(std::string prefix, int rate, int run_time, int i_lifetime) : m_face(m_ioService), m_scheduler(m_ioService)
   {
     this->prefix = prefix;
     this->rate = rate;
     this->counter = 0;
     this->run_time = run_time;
+    this->lifetime = i_lifetime;
     this->stop_consumer = false;
 
-    this->interest_received = 0;
+    this->data_received = 0;
     this->interest_send = 0;
     this-> rtx_counter = 0;
     this->debug = false;
@@ -40,15 +42,16 @@ public:
 
     m_face.processEvents();
 
-    double ratio = ((double) interest_received) / (double) interest_send;
+    double ratio = ((double) data_received) / (double) interest_send;
 
-    std::cout << "Interests Send: " << interest_send << std::endl;
-    std::cout << "Interests Satisfied: " << interest_received << std::endl;
+    std::cout << "Distinguished Interests Send: " << interest_send << std::endl;
     if(rtx)
       std::cout << "Retransmissions: " << rtx_counter << std::endl;
     else
       std::cout << "Retransmissions: Disabled" << std::endl;
-    std::cout << "Interset/Data ratio: " << ratio << std::endl;
+    std::cout << "Total Interests Send: " << interest_send + rtx_counter << std::endl;
+    std::cout << "Distinguished Interests Satisfied: " << data_received << std::endl;
+    std::cout << "Total Interset/Data ratio: " << ratio << std::endl;
   }
 
   void setDebug(bool debug)
@@ -65,49 +68,56 @@ private:
 
   void expressInterest(boost::asio::deadline_timer* timer)
   {
-    Interest interest(Name(prefix + "/" + boost::lexical_cast<std::string>(counter++)));
-    interest.setInterestLifetime(time::milliseconds(1000));
-    interest.setMustBeFresh(true);
+    if(stop_consumer)
+      return;
 
-    m_face.expressInterest(interest,
-                           bind(&Consumer::onData, this,  _1, _2),
-                           bind(&Consumer::onTimeout, this, _1));
-
-    this->interest_send++;
-
-    if(debug)
-      std::cout << "Sending: " << interest << std::endl;
-
-    if(!stop_consumer)
+    if(rtx_queue.size () > 0)
     {
-      timer->expires_at (timer->expires_at ()+ boost::posix_time::microseconds(1000000/rate));
-      timer->async_wait(bind(&Consumer::expressInterest, this, timer));
+      onRetransmission();
     }
+    else // new interest
+    {
+      Interest interest(Name(prefix + "/" + boost::lexical_cast<std::string>(counter++)));
+      interest.setInterestLifetime(time::milliseconds(lifetime));
+      interest.setMustBeFresh(true);
+
+      m_face.expressInterest(interest,
+                             bind(&Consumer::onData, this,  _1, _2),
+                             bind(&Consumer::onTimeout, this, _1));
+
+      if(debug)
+        std::cout << "Sending: " << interest << std::endl;
+      this->interest_send++;
+    }
+
+    timer->expires_at (timer->expires_at ()+ boost::posix_time::microseconds(1000000/rate));
+    timer->async_wait(bind(&Consumer::expressInterest, this, timer));
   }
 
   void onData(const Interest& interest, const Data& data)
   {
     if(debug)
       std::cout << "Received: " << data << std::endl;
-    this->interest_received++;
+    this->data_received++;
   }
 
   void onTimeout(const Interest& interest)
   {
     if(debug)
-    {
       std::cout << "Timeout " << interest << std::endl;
-    }
 
-    if(rtx && !stop_consumer)
-      onRetransmission(interest);
+    if(rtx)
+      rtx_queue.push_back (interest.getName ().toUri ());
   }
 
-  void onRetransmission(const Interest& interest)
+  void onRetransmission()
   {
-    Interest rtx_interest(interest.getName ());
-    rtx_interest.setInterestLifetime (interest.getInterestLifetime ());
-    //a new nonce should be generated automatically
+
+    Interest rtx_interest(Name(rtx_queue.front ()));
+    rtx_queue.erase (rtx_queue.begin ());
+
+    rtx_interest.setInterestLifetime(time::milliseconds(lifetime));
+    rtx_interest.setMustBeFresh(true);
 
     m_face.expressInterest(rtx_interest,
                            bind(&Consumer::onData, this,  _1, _2),
@@ -132,13 +142,16 @@ private:
   int rate;
   int counter;
   int run_time;
+  int lifetime;
   bool stop_consumer;
   bool debug;
   bool rtx;
 
   unsigned int interest_send;
-  unsigned int interest_received;
+  unsigned int data_received;
   unsigned int rtx_counter;
+
+  std::vector<std::string> rtx_queue;
 };
 
 }
@@ -156,6 +169,7 @@ main(int argc, char** argv)
       ("rate,r", value<int>()->required (), "Interests per second issued. (Required)")
       ("run-time,t", value<int>()->required (), "Runtime of Producer in Seconds. (Required)")
       ("rtx,x", "Enable Retransmissions. (Optional)")
+      ("lifetime,l", value<int>(), "Interest Lifetime (Default 1000msec)")
       ("debug,v", "Enables Debug. (Optional)");
 
   positional_options_description positionalOptions;
@@ -204,9 +218,16 @@ main(int argc, char** argv)
     return -1;
   }
 
+  int lifetime = 1000;
+  if(vm.count ("lifetime"))
+  {
+    lifetime = vm["lifetime"].as<int>();
+  }
+
   ndn::Consumer consumer(vm["prefix"].as<std::string>(),
                          vm["rate"].as<int>(),
-                         vm["run-time"].as<int>());
+                         vm["run-time"].as<int>(),
+                         lifetime);
 
   if(vm.count("debug"))
     consumer.setDebug (true);
