@@ -54,7 +54,7 @@ public:
     std::cout << "Total Interests Send: " << interest_send + rtx_counter << std::endl;
     std::cout << "Distinguished Interests Satisfied: " << data_received << std::endl;
 
-    double ratio = ((double) data_received) / (double) interest_send + rtx_counter;
+    double ratio = ((double) data_received) / (double) (interest_send + rtx_counter);
     std::cout << "Total Interset/Data ratio: " << ratio << std::endl;
   }
 
