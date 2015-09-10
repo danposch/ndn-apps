@@ -46,8 +46,6 @@ public:
 
     m_face.processEvents();
 
-    double ratio = ((double) data_received) / (double) interest_send;
-
     std::cout << "Distinguished Interests Send: " << interest_send << std::endl;
     if(rtx)
       std::cout << "Retransmissions: " << rtx_counter << std::endl;
@@ -55,6 +53,8 @@ public:
       std::cout << "Retransmissions: Disabled" << std::endl;
     std::cout << "Total Interests Send: " << interest_send + rtx_counter << std::endl;
     std::cout << "Distinguished Interests Satisfied: " << data_received << std::endl;
+
+    double ratio = ((double) data_received) / (double) interest_send + rtx_counter;
     std::cout << "Total Interset/Data ratio: " << ratio << std::endl;
   }
 
