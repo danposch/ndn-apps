@@ -19,6 +19,7 @@ public:
     this->prefix = prefix;
     this->data_size = data_size;
     this->fresshness_seconds = fresshness_seconds;
+    dummyContnet = generateContent (data_size);
   }
 
   void run()
@@ -60,7 +61,8 @@ private:
     Name dataName(interest.getName());
     dataName.appendVersion();  // add "version" component (current UNIX timestamp in milliseconds)
 
-    std::string content = generateContent(data_size);
+    //std::string content = generateContent(data_size);
+    std::string content = dummyContnet;
 
     // Create Data packet
     shared_ptr<Data> data = make_shared<Data>();
@@ -91,6 +93,7 @@ private:
   int fresshness_seconds;
   std::string prefix;
   bool debug;
+  std::string dummyContnet;
 };
 
 } // namespace ndn
